@@ -1,7 +1,7 @@
 import reducer from './reducers'
 import { createStore, applyMiddleware } from 'redux'
 import createSagaMiddleware from 'redux-saga'
-import { helloSaga, watchIncrementAsync } from './mySaga'
+import myRootSaga from './myRootSaga'
 
 const sagaMiddleware = createSagaMiddleware(); 
 
@@ -10,5 +10,4 @@ export default createStore(
     applyMiddleware(sagaMiddleware)
 );
 
-sagaMiddleware.run(watchIncrementAsync);
-sagaMiddleware.run(helloSaga);
+sagaMiddleware.run(myRootSaga);
