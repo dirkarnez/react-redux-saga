@@ -34,7 +34,6 @@ const mapDispatchToProps = dispatch => {
       dispatch({type:'INCREMENT'});
     },
     onIncrementAsync: () => {
-      //dispatch({type:'INCREMENT_ASYNC'});
       dispatch({type:'MY_HTTP'});
     },
     onDecrement: () => {

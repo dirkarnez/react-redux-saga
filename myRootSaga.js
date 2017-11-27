@@ -1,71 +1,69 @@
-import { takeEvery } from 'redux-saga'
-import { call, all, put } from 'redux-saga/effects'
+import { takeEvery, delay} from 'redux-saga'
+import { call, all, put, select, race, fork, take  } from 'redux-saga/effects'
+import { HTTP_TIMEOUT } from './appConfig';
+import { setInterval } from 'core-js/library/web/timers';
 
 // 一个工具函数：返回一个 Promise，这个 Promise 将在 1 秒后 resolve
 //resolve will be assigned somewhere
-export const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+export const mydelay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-// Our worker Saga: 将异步执行 increment 任务
-export function* incrementAsync() {
-  yield delay(1000);
-  yield put({ type: 'INCREMENT' })
-}
-
-// Our watcher Saga: 在每个 INCREMENT_ASYNC action 调用后，派生一个新的 incrementAsync 任务
-export function* watchIncrementAsync() {
-  yield* takeEvery('INCREMENT_ASYNC', incrementAsync);
-}
-
-/******************************** */
 export function* watchGenericHTTP() {
   yield* takeEvery('MY_HTTP', fetchUser);
 }
 
-function* fetchUser(action) {
-  console.log(`${action.type} is being listened!`);
-  yield* callApi( 
-    'https://jsonplaceholder.typicode.com/posts/1',
-    null);
+export function* watchEveryThing() {
+  yield* takeEvery('*', function* (action) {
+    const state = yield select();
+    console.log(`${action.type} is logged!`);
+    console.log('state after', state)
+  });
 }
 
-export function* callApi(
-  url,
-  config,
-  onRequestSuccess,
-  onRequestFailure
-) {
-  try {
-    const ret = yield call(fetch, url)
-    console.log(ret);
-    yield put({ type: 'INCREMENT', result: ret })
-  } catch(error) {
-    yield put({ type: 'PRODUCTS_REQUEST_FAILED', error })
+function* fetchUser(action) {
+    console.log(`${action.type} is being listened!`);
+    yield race([
+      call(fetchResource, 'https://jsonplaceholder.typicode.com/photos'),
+      call(delay, HTTP_TIMEOUT),
+      take('DECREMENT')
+    ])
+    console.log ("End");
+}
+
+function* fetchResource(url) {
+  const { response , error }  = yield call(callApi, url);
+  if (response ) {
+    console.log("P");
+    yield put({ type: 'INCREMENT', result: response });
+  } else if (error) { 
+    console.log("E");
   }
 }
 
-function* checkStatus(response) {
-  console.log("checkStatus")
+export function callApi(url) {
+    return fetch(url)
+    .then(checkStatus)
+    .then(parseJSON)
+    .then(response => ({ response }))
+    .catch(error => ({ error }))
+}
+
+export function checkStatus(response) {
   if (!response.ok) {
-    // (response.status < 200 || response.status > 300)
     const error = new Error(response.statusText);
     error.response = response;
     throw error;
   }
-  yield response;
+  return response;
 }
 
-function* parseJSON(response) {
-  console.log("parseJSON")
-  yield response.json();
+export function parseJSON(response) {
+  return response.json();
 }
-
-
-/******************************** */
 
 function* rootSaga() {
   yield all([
-    watchIncrementAsync(),
-    watchGenericHTTP()
+    watchGenericHTTP(),
+    watchEveryThing()
   ])
 }
 
